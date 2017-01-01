@@ -422,6 +422,12 @@ def travis_add_parameters(repo_id):
         req_travis_add_parameter(repo_id, param)
 
 
+def travis_init_script(name):
+    f = file('template_travis.yaml', 'r')
+    content = f.read()
+    req_github_create_file(name, ".travis.yml", content)
+
+
 if __name__ == "__main__":
     print 'Starting...'
     init_config()
@@ -437,4 +443,5 @@ if __name__ == "__main__":
     hook_id = travis_get_new_hook_id(repo_name)
     req_travis_active_hook(hook_id)
     travis_add_parameters(hook_id)
+    travis_init_script(repo_name)
     print 'Please check the result.'
