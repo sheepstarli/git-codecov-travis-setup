@@ -3,76 +3,54 @@
 import urllib2
 import json
 import base64
+import sys
+import config
 
-# Api config
-GITHUB_API_URL = "https://api.github.com"
-CODECOV_API_URL = "https://codecov.io/api"
-TRAVIS_API_URL = "https://api.travis-ci.org"
-# TRAVIS_API_URL = "https://api.travis-ci.com"
-
-# Token config
-GITHUB_TOKEN = ""
-CODECOV_TOKEN = ""
-
-# Github repo config
-GITHUB_ORG = "91chenxing"
-GITHUB_REPO_NAME = "repo-2"
-GITHUB_REPO_DESCRIPTION = "The description of the repo."
-GITHUB_REPO_HOMEPAGE = "https://github.com/easemob/"
-GITHUB_REPO_PRIVATE = False
-GITHUB_REPO_AUTO_INIT = True
-GITHUB_REPO_IG_TP = 'Java'
-GITHUB_REPO_USERNAME = "sheepstarli"
-GITHUB_REPO_MAIL= "licx@easemob.com"
-
-# Travis config
-TRAVIS_USER_PARAMS = [
-    {
-        "name": "p1",
-        "value": "v1",
-        "public": True
-    },{
-        "name": "p2",
-        "value": "v2",
-        "public": False
-    },{
-        "name": "p3",
-        "value": "v3",
-        "public": False
-    },{
-        "name": "p4",
-        "value": "v4",
-        "public": True
-    }
-]
 
 # Common Header
 CONTENT_TYPE = {"Content-Type": "application/json"}
 
 # Other Header
-GITHUB_AUTH_TOKEN = {"Authorization": "token " + GITHUB_TOKEN}
+GITHUB_AUTH_TOKEN = {"Authorization": "token "}
 GITHUB_ACCEPT = {"Accept": "application/vnd.github.v3+json"}
 
-CODECOV_AUTH_TOKEN = {"Authorization": "token " + CODECOV_TOKEN}
+CODECOV_AUTH_TOKEN = {"Authorization": "token "}
 
 TRAVIS_AUTH_TOKEN = {"Authorization": "token "}
 TRAVIS_ACCEPT = {"Accept": "application/vnd.travis-ci.2+json"}
 TRAVIS_USER_AGENT = {"User-Agent": "MyClient/1.0.0"}
 
-def req_github_create_repo():
+cfg = None
+
+def init_config():
+    global cfg
+    cfg = config.Config()
+    GITHUB_AUTH_TOKEN["Authorization"] = "token " + cfg.github_token
+    CODECOV_AUTH_TOKEN["Authorization"] = "token " + cfg.codecov_token
+
+
+def github_input_repo_name():
+    str1 = raw_input("Please input repo name:")
+    if len(str1) == 0:
+        print 'Input error'
+        return None
+    return str1
+
+
+def req_github_create_repo(name):
     print 'Create repo...'
     github_body_create_repo = {
-        "name": GITHUB_REPO_NAME,
-        "description": GITHUB_REPO_DESCRIPTION,
-        "homepage": GITHUB_REPO_HOMEPAGE,
-        "private": GITHUB_REPO_PRIVATE,
-        "auto_init": GITHUB_REPO_AUTO_INIT,
-        "gitignore_template": GITHUB_REPO_IG_TP
+        "name": name,
+        "description": cfg.github_repo_description,
+        "homepage": cfg.github_repo_homepage,
+        "private": cfg.github_repo_private,
+        "auto_init": cfg.github_repo_auto_init,
+        "gitignore_template": cfg.github_repo_ig_tp
     }
     headers = {}
     headers.update(GITHUB_AUTH_TOKEN)
     headers.update(GITHUB_ACCEPT)
-    req = urllib2.Request(url=GITHUB_API_URL + "/orgs/" + GITHUB_ORG + "/repos",
+    req = urllib2.Request(url=cfg.github_api_url + "/orgs/" + cfg.github_org + "/repos",
                           data=json.dumps(github_body_create_repo), headers=headers)
     req.get_method = lambda: 'POST'
     try:
@@ -88,19 +66,18 @@ def req_github_create_repo():
         print 'Create repo unknown error', e
 
 
-def req_github_list_team():
-    print 'Getting team list'
+def req_github_list_team(page=1, per_page=100):
+    print 'Getting team list page', page
     headers = {}
     headers.update(GITHUB_AUTH_TOKEN)
     headers.update(GITHUB_ACCEPT)
-    req = urllib2.Request(url=GITHUB_API_URL + "/orgs/" + GITHUB_ORG + "/teams", headers=headers)
+    req = urllib2.Request(url=cfg.github_api_url + "/orgs/" + cfg.github_org + "/teams?page=" + str(page) + "&per_page=" + str(per_page), headers=headers)
     req.get_method = lambda: 'GET'
-    team_list = None
     try:
         res = urllib2.urlopen(req)
         json_str = res.read()
         res.close()
-        team_list = json.loads(json_str)
+        return json.loads(json_str)
     except urllib2.HTTPError, e:
         print 'error resultCode:', e.code
         print 'error msg:', (e.read().decode('utf-8'))
@@ -109,24 +86,37 @@ def req_github_list_team():
     except Exception, e:
         print 'Unknown error', e
 
+
+def github_list_team():
+    page = 1
+    per_page = 1
+    team_list = []
+    while True:
+        tmp_list = req_github_list_team(page, per_page)
+        if tmp_list:
+            team_list.extend(tmp_list)
+            page += 1
+        else:
+            break
+
     print "Team List"
     for team in team_list:
-        print "name:", team["name"], "\tid:", team["id"]
+        print "name:", team["name"], "\t\t\t\tid:", team["id"]
 
 
-def req_github_team_add_repo(team_id, permission):
+def req_github_team_add_repo(name, team_id, permission):
     body = {
         "permission": permission
     }
     headers = {}
     headers.update(GITHUB_AUTH_TOKEN)
     headers.update(GITHUB_ACCEPT)
-    req = urllib2.Request(url=GITHUB_API_URL + "/teams/" + team_id + "/repos/" + GITHUB_ORG + "/" + GITHUB_REPO_NAME,
+    req = urllib2.Request(url=cfg.github_api_url + "/teams/" + team_id + "/repos/" + cfg.github_org + "/" + name,
                           data=json.dumps(body), headers=headers)
     req.get_method = lambda: 'PUT'
     try:
         res = urllib2.urlopen(req)
-        print 'Added repo', GITHUB_REPO_NAME, 'team', team_id, 'with permission', permission, 'success!'
+        print 'Added repo', name, 'team', team_id, 'with permission', permission, 'success!'
         res.close()
     except urllib2.HTTPError, e:
         print 'Added repo error resultCode:', e.code
@@ -137,7 +127,7 @@ def req_github_team_add_repo(team_id, permission):
         print 'Added repo unknown error'
 
 
-def github_team_add_repo():
+def github_team_add_repo(name):
     str1 = raw_input("Please input team_id and permission(eg. 123,pull 222,push 333,admin):")
     if len(str1) == 0:
         print 'Input error'
@@ -145,17 +135,17 @@ def github_team_add_repo():
     arr1 = str1.split()
     for id_team in arr1:
         arr2 = id_team.split(",")
-        req_github_team_add_repo(arr2[0], arr2[1])
+        req_github_team_add_repo(name, arr2[0], arr2[1])
     return True
 
 
-def req_github_get_head_ref():
+def req_github_get_head_ref(name):
     print 'Getting head ref'
     headers = {}
     headers.update(GITHUB_AUTH_TOKEN)
     headers.update(GITHUB_ACCEPT)
     req = urllib2.Request(
-        url=GITHUB_API_URL + "/repos/" + GITHUB_ORG + "/" + GITHUB_REPO_NAME + "/git/refs/heads/master",
+        url=cfg.github_api_url + "/repos/" + cfg.github_org + "/" + name + "/git/refs/heads/master",
         headers=headers)
     req.get_method = lambda: 'GET'
     ref_body = None
@@ -175,12 +165,12 @@ def req_github_get_head_ref():
     return ref_body
 
 
-def github_get_head_ref():
-    ref_body = req_github_get_head_ref()
+def github_get_head_ref(name):
+    ref_body = req_github_get_head_ref(name)
     return ref_body['object']['sha']
 
 
-def req_github_add_branch_dev(sha):
+def req_github_add_branch_dev(name, sha):
     body = {
         "ref": "refs/heads/dev",
         "sha": sha
@@ -188,12 +178,12 @@ def req_github_add_branch_dev(sha):
     headers = {}
     headers.update(GITHUB_AUTH_TOKEN)
     headers.update(GITHUB_ACCEPT)
-    req = urllib2.Request(url=GITHUB_API_URL + "/repos/" + GITHUB_ORG + "/" + GITHUB_REPO_NAME + "/git/refs",
+    req = urllib2.Request(url=cfg.github_api_url + "/repos/" + cfg.github_org + "/" + name + "/git/refs",
                           data=json.dumps(body), headers=headers)
     req.get_method = lambda: 'POST'
     try:
         res = urllib2.urlopen(req)
-        print 'Added', GITHUB_REPO_NAME, 'branch dev on commit', sha, 'success!'
+        print 'Added', name, 'branch dev on commit', sha, 'success!'
         res.close()
     except urllib2.HTTPError, e:
         print 'Added branch error resultCode:', e.code
@@ -204,25 +194,25 @@ def req_github_add_branch_dev(sha):
         print 'Added branch unknown error', e
 
 
-def github_add_branch_dev():
-    sha = github_get_head_ref()
-    req_github_add_branch_dev(sha)
+def github_add_branch_dev(name):
+    sha = github_get_head_ref(name)
+    req_github_add_branch_dev(name, sha)
 
 
-def req_github_update_default_branch_dev():
+def req_github_update_default_branch_dev(name):
     body = {
-        "name": GITHUB_REPO_NAME,
+        "name": name,
         "default_branch": "dev"
     }
     headers = {}
     headers.update(GITHUB_AUTH_TOKEN)
     headers.update(GITHUB_ACCEPT)
-    req = urllib2.Request(url=GITHUB_API_URL + "/repos/" + GITHUB_ORG + "/" + GITHUB_REPO_NAME,
+    req = urllib2.Request(url=cfg.github_api_url + "/repos/" + cfg.github_org + "/" + name,
                           data=json.dumps(body), headers=headers)
     req.get_method = lambda: 'PATCH'
     try:
         res = urllib2.urlopen(req)
-        print 'Update', GITHUB_REPO_NAME, 'default branch dev success!'
+        print 'Update', name, 'default branch dev success!'
         res.close()
     except urllib2.HTTPError, e:
         print 'Update default branch error resultCode:', e.code
@@ -233,12 +223,12 @@ def req_github_update_default_branch_dev():
         print 'Added default branch unknown error', e
 
 
-def req_github_create_file(filename, content, message="init", branch="dev"):
+def req_github_create_file(name, filename, content, message="init", branch="dev"):
     body = {
         "message": message,
         "committer": {
-            "name": GITHUB_REPO_USERNAME,
-            "email": GITHUB_REPO_MAIL
+            "name": cfg.github_repo_username,
+            "email": cfg.github_repo_mail
         },
         "branch": branch,
         "content": base64.b64encode(content)
@@ -246,12 +236,12 @@ def req_github_create_file(filename, content, message="init", branch="dev"):
     headers = {}
     headers.update(GITHUB_AUTH_TOKEN)
     headers.update(GITHUB_ACCEPT)
-    req = urllib2.Request(url=GITHUB_API_URL + "/repos/" + GITHUB_ORG + "/" + GITHUB_REPO_NAME + "/contents/" + filename,
+    req = urllib2.Request(url=cfg.github_api_url + "/repos/" + cfg.github_org + "/" + name + "/contents/" + filename,
                           data=json.dumps(body), headers=headers)
     req.get_method = lambda: 'PUT'
     try:
         res = urllib2.urlopen(req)
-        print 'Create', filename, 'in', GITHUB_REPO_NAME, 'on branch', branch, 'with content', content, 'success!'
+        print 'Create', filename, 'in', name, 'on branch', branch, 'with content', content, 'success!'
         res.close()
     except urllib2.HTTPError, e:
         print 'Create file error resultCode:', e.code
@@ -262,16 +252,16 @@ def req_github_create_file(filename, content, message="init", branch="dev"):
         print 'Create file error unknown error', e
 
 
-def req_codecov_get_upload_token():
+def req_codecov_get_upload_token(name):
     headers = {}
     headers.update(CODECOV_AUTH_TOKEN)
-    req = urllib2.Request(url=CODECOV_API_URL + "/gh/" + GITHUB_ORG + "/" + GITHUB_REPO_NAME, headers=headers)
+    req = urllib2.Request(url=cfg.codecov_api_url + "/gh/" + cfg.github_org + "/" + name, headers=headers)
     req.get_method = lambda: 'GET'
     token_body = None
     try:
         res = urllib2.urlopen(req)
         json_str = res.read()
-        print 'Get', GITHUB_REPO_NAME, 'codecov upload token success.' + json_str
+        print 'Get', name, 'codecov upload token success.' + json_str
         res.close()
         token_body = json.loads(json_str)
     except urllib2.HTTPError, e:
@@ -284,21 +274,21 @@ def req_codecov_get_upload_token():
     return token_body
 
 
-def codecov_init_upload_token():
-    token_body = req_codecov_get_upload_token()
+def codecov_init_upload_token(name):
+    token_body = req_codecov_get_upload_token(name)
     upload_token = token_body['repo']['upload_token']
-    req_github_create_file('codecov-token', upload_token, 'Init codevoc upload token.', 'dev')
+    req_github_create_file(name, '.codecov-token', upload_token, 'Init codevoc upload token.', 'dev')
 
 
 def req_travis_get_token():
     body = {
-        "github_token": GITHUB_TOKEN
+        "github_token": cfg.github_token
     }
     headers = {}
     headers.update(TRAVIS_ACCEPT)
     headers.update(TRAVIS_USER_AGENT)
     headers.update(CONTENT_TYPE)
-    req = urllib2.Request(url=TRAVIS_API_URL + "/auth/github", data=json.dumps(body), headers=headers)
+    req = urllib2.Request(url=cfg.travis_api_url + "/auth/github", data=json.dumps(body), headers=headers)
     req.get_method = lambda: 'POST'
     token_body = None
     try:
@@ -323,8 +313,8 @@ def req_travis_sync_user():
     headers.update(TRAVIS_ACCEPT)
     headers.update(TRAVIS_USER_AGENT)
     headers.update(TRAVIS_AUTH_TOKEN)
-    req = urllib2.Request(url=TRAVIS_API_URL + "/users/sync", headers=headers)
-    req.get_method = lambda: 'GET'
+    req = urllib2.Request(url=cfg.travis_api_url + "/users/sync", headers=headers)
+    req.get_method = lambda: 'POST'
     try:
         res = urllib2.urlopen(req)
         json_str = res.read()
@@ -344,7 +334,7 @@ def req_travis_get_hooks():
     headers.update(TRAVIS_ACCEPT)
     headers.update(TRAVIS_USER_AGENT)
     headers.update(TRAVIS_AUTH_TOKEN)
-    req = urllib2.Request(url=TRAVIS_API_URL + "/hooks?all=true&owner_name=" + GITHUB_ORG, headers=headers)
+    req = urllib2.Request(url=cfg.travis_api_url + "/hooks?all=true&owner_name=" + cfg.github_org, headers=headers)
     req.get_method = lambda: 'GET'
     res_body = None
     try:
@@ -363,11 +353,11 @@ def req_travis_get_hooks():
     return res_body
 
 
-def travis_get_new_hook_id():
+def travis_get_new_hook_id(name):
     hooks_res = req_travis_get_hooks()
     hooks = hooks_res['hooks']
     for hook in hooks:
-        if hook['name'] == GITHUB_REPO_NAME:
+        if hook['name'] == name:
             print 'Get the hook.', hook
             return hook['id']
     return None
@@ -385,7 +375,7 @@ def req_travis_active_hook(hook_id):
     headers.update(TRAVIS_USER_AGENT)
     headers.update(TRAVIS_AUTH_TOKEN)
     headers.update(CONTENT_TYPE)
-    req = urllib2.Request(url=TRAVIS_API_URL + "/hooks", data=json.dumps(body), headers=headers)
+    req = urllib2.Request(url=cfg.travis_api_url + "/hooks", data=json.dumps(body), headers=headers)
     req.get_method = lambda: 'PUT'
     try:
         res = urllib2.urlopen(req)
@@ -410,7 +400,7 @@ def req_travis_add_parameter(repo_id, param):
     headers.update(TRAVIS_USER_AGENT)
     headers.update(TRAVIS_AUTH_TOKEN)
     headers.update(CONTENT_TYPE)
-    req = urllib2.Request(url=TRAVIS_API_URL + "/settings/env_vars?repository_id=" + str(repo_id), data=json.dumps(body),
+    req = urllib2.Request(url=cfg.travis_api_url + "/settings/env_vars?repository_id=" + str(repo_id), data=json.dumps(body),
                           headers=headers)
     req.get_method = lambda: 'POST'
     try:
@@ -428,21 +418,23 @@ def req_travis_add_parameter(repo_id, param):
 
 
 def travis_add_parameters(repo_id):
-    for param in TRAVIS_USER_PARAMS:
+    for param in cfg.travis_user_params:
         req_travis_add_parameter(repo_id, param)
 
 
 if __name__ == "__main__":
     print 'Starting...'
-    req_github_create_repo()
-    req_github_list_team()
-    github_team_add_repo()
-    github_add_branch_dev()
-    req_github_update_default_branch_dev()
-    codecov_init_upload_token()
+    init_config()
+    repo_name = github_input_repo_name()
+    req_github_create_repo(repo_name)
+    github_list_team()
+    github_team_add_repo(repo_name)
+    github_add_branch_dev(repo_name)
+    req_github_update_default_branch_dev(repo_name)
+    codecov_init_upload_token(repo_name)
     req_travis_get_token()
-    # req_travis_sync_user()
-    hook_id = travis_get_new_hook_id()
+    req_travis_sync_user()
+    hook_id = travis_get_new_hook_id(repo_name)
     req_travis_active_hook(hook_id)
     travis_add_parameters(hook_id)
     print 'Please check the result.'

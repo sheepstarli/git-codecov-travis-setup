@@ -1,0 +1,39 @@
+# github codecov travis setup config
+
+# Api config
+GITHUB_API_URL: https://api.github.com
+CODECOV_API_URL: https://codecov.io/api
+TRAVIS_API_URL: https://api.travis-ci.org
+# TRAVIS_API_URL: https://api.travis-ci.com
+
+# Token config
+GITHUB_TOKEN:
+CODECOV_TOKEN:
+
+# Github repo config
+GITHUB_ORG: 91chenxing
+GITHUB_REPO_DESCRIPTION: The description of the repo.
+GITHUB_REPO_HOMEPAGE: https://github.com/easemob/
+GITHUB_REPO_PRIVATE: False
+GITHUB_REPO_AUTO_INIT: True
+GITHUB_REPO_IG_TP: Java
+GITHUB_REPO_USERNAME: sheepstarli
+GITHUB_REPO_MAIL: licx@easemob.com
+
+# Travis config
+TRAVIS_USER_PARAMS:
+  - name: n1
+    value: v1
+    public: True
+  - name: n2
+    value: v2
+    public: True
+  - name: n3
+    value: v3
+    public: False
+  - name: n4
+    value: v4
+    public: False
+  - name: n5
+    value: v5
+    public: True
