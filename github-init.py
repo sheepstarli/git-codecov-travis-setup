@@ -423,7 +423,7 @@ def travis_add_parameters(repo_id):
 
 
 def travis_init_script(name):
-    f = file('template_travis.yaml', 'r')
+    f = file('template_travis.yml', 'r')
     content = f.read()
     req_github_create_file(name, ".travis.yml", content)
 

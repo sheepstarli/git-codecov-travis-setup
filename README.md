@@ -6,13 +6,13 @@
 
 初始化codecov，在dev根目录创建.codecov-token文件保存codecov的upload-token
 
-初始化travis，开启hook的开关，配置自定义环境变量，创建.travis.yaml文件
+初始化travis，开启hook的开关，配置自定义环境变量，创建.travis.yml文件
 
 *注意*需要提前在github上给codecov和travis设置好权限
 
 ## 配置文件位置
 
-请拷贝gts-config.yaml到~目录下，默认读取这个位置的配置文件
+请拷贝gts-config.yml到~目录下，默认读取这个位置的配置文件
 
 ## 配置文件说明
 
